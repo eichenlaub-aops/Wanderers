@@ -120,7 +120,7 @@ const slides = [
         caption: " "
     },
     {
-        image: "images/animation.gif",
+        image: "images/Animation.gif",
         caption: " "
     }
 ];
