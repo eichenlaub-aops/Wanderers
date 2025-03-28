@@ -33,7 +33,7 @@ const slides = [
     // Mars images
     {
         image: "images/wanderers_Mars.png",
-        caption: "Time for the next planet."
+        caption: "What will the next planet be?"
     },
     {
         image: "images/wanderers_Mars_2025_05_16.png",
