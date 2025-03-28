@@ -118,6 +118,10 @@ const slides = [
     {
         image: "images/wanderers_z_02.png",
         caption: " "
+    },
+    {
+        image: "images/animation.gif",
+        caption: " "
     }
 ];
 
