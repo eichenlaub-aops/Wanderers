@@ -103,6 +103,14 @@ function initSlideshow() {
             changeSlide(1);
         }
     });
+    
+    // Add error handling for images
+    document.getElementById('slide-image').onerror = function() {
+        this.onerror = null;
+        this.src = 'images/error.png'; // You can create a simple placeholder image
+        console.error('Error loading image: ' + slides[currentSlideIndex].image);
+        alert('Error loading image. Make sure your images are in the correct folder structure.');
+    };
 }
 
 // Show the current slide
@@ -119,6 +127,9 @@ function showSlide(index) {
     // Update button states
     prevButton.disabled = index === 0;
     nextButton.disabled = index === slides.length - 1;
+    
+    // Debug info
+    console.log('Loading image: ' + slides[index].image);
 }
 
 // Change to next or previous slide
