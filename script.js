@@ -33,7 +33,7 @@ const slides = [
     // Mars images
     {
         image: "images/wanderers_Mars",
-        caption: ""
+        caption: "Time for the next planet."
     },
     {
         image: "images/wanderers_Mars_2025_05_16.png",
@@ -55,7 +55,7 @@ const slides = [
     // Saturn images
     {
         image: "images/wanderers_Saturn.png",
-        caption: "Saturn - July 13, 2022"
+        caption: "Last Planet"
     },
     {
         image: "images/wanderers_Saturn_2022_07_13.png",
