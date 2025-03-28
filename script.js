@@ -32,7 +32,7 @@ const slides = [
     
     // Mars images
     {
-        image: "images/wanderers_Mars",
+        image: "images/wanderers_Mars.png",
         caption: "Time for the next planet."
     },
     {
@@ -77,11 +77,11 @@ const slides = [
     // Venus-Saturn-Mercury images
     {
         image: "images/Venus.png",
-        caption: ""
+        caption: "test"
     },
     {
         image: "images/Venus_0.png",
-        caption: ""
+        caption: "test"
     },
     {
         image: "images/wanderers_Venus_Saturn_Mercury_2025_04_29.png",
