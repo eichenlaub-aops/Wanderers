@@ -2,6 +2,10 @@
 const slides = [
     // Jupiter images
     {
+        image: "images/wanderers_Jupiter.png",
+        caption: "Example 1: Jupiter"
+    },
+    {
         image: "images/wanderers_Jupiter_2025_03_11_arrow.png",
         caption: "Jupiter - March 11, 2025"
     },
@@ -28,6 +32,10 @@ const slides = [
     
     // Mars images
     {
+        image: "images/wanderers_Mars",
+        caption: ""
+    },
+    {
         image: "images/wanderers_Mars_2025_05_16.png",
         caption: "Mars - May 16, 2025"
     },
@@ -46,6 +54,10 @@ const slides = [
     
     // Saturn images
     {
+        image: "images/wanderers_Saturn.png",
+        caption: "Saturn - July 13, 2022"
+    },
+    {
         image: "images/wanderers_Saturn_2022_07_13.png",
         caption: "Saturn - July 13, 2022"
     },
@@ -63,6 +75,14 @@ const slides = [
     },
     
     // Venus-Saturn-Mercury images
+    {
+        image: "images/Venus.png",
+        caption: ""
+    },
+    {
+        image: "images/Venus_0.png",
+        caption: ""
+    },
     {
         image: "images/wanderers_Venus_Saturn_Mercury_2025_04_29.png",
         caption: "Venus, Saturn & Mercury - April 29, 2025"
