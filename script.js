@@ -76,12 +76,12 @@ const slides = [
     
     // Venus-Saturn-Mercury images
     {
-        image: "images/Venus.png",
-        caption: "test"
+        image: "images/wanderers_Venus.png",
+        caption: " "
     },
     {
-        image: "images/Venus_0.png",
-        caption: "test"
+        image: "images/wanderers_Venus_0.png",
+        caption: " "
     },
     {
         image: "images/wanderers_Venus_Saturn_Mercury_2025_04_29.png",
@@ -106,6 +106,18 @@ const slides = [
     {
         image: "images/wanderers_Venus_Saturn_Mercury_2025_06_03.png",
         caption: "Venus, Saturn & Mercury - June 3, 2025"
+    }
+    {
+        image: "images/wanderers_zz_00.png",
+        caption: " "
+    }
+    {
+        image: "images/wanderers_zz_01.png",
+        caption: " "
+    }
+    {
+        image: "images/wanderers_zz_02.png",
+        caption: " "
     }
 ];
 
