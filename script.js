@@ -108,15 +108,15 @@ const slides = [
         caption: "Venus, Saturn & Mercury - June 3, 2025"
     },
     {
-        image: "images/wanderers_zz_00.png",
+        image: "images/wanderers_z_00.png",
         caption: " "
     },
     {
-        image: "images/wanderers_zz_01.png",
+        image: "images/wanderers_z_01.png",
         caption: " "
     },
     {
-        image: "images/wanderers_zz_02.png",
+        image: "images/wanderers_z_02.png",
         caption: " "
     }
 ];
