@@ -1,0 +1,160 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f0f0f0;
+    display: flex;
+    justify-content: center;
+    padding: 20px;
+}
+
+.game-container {
+    max-width: 650px;
+    width: 100%;
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+h1 {
+    font-size: 24px;
+    margin-bottom: 16px;
+    color: #333;
+    text-align: center;
+}
+
+.message-box {
+    text-align: center;
+    margin-bottom: 16px;
+    width: 100%;
+}
+
+#message {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: #333;
+}
+
+.subtitle {
+    font-size: 14px;
+    color: #666;
+}
+
+.canvas-container {
+    width: 100%;
+    margin-bottom: 16px;
+}
+
+canvas {
+    border: 1px solid #ccc;
+    background-color: white;
+    width: 100%;
+    height: auto;
+}
+
+.controls {
+    width: 100%;
+    max-width: 600px;
+    margin-bottom: 16px;
+}
+
+.control-group {
+    margin-bottom: 12px;
+}
+
+label {
+    display: block;
+    margin-bottom: 4px;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+input[type="range"] {
+    width: 100%;
+    margin-bottom: 8px;
+}
+
+.button-group {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    margin-top: 16px;
+}
+
+button {
+    padding: 8px 24px;
+    font-size: 16px;
+    font-weight: 600;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.go-button {
+    background-color: #4CAF50;
+    color: white;
+}
+
+.go-button:hover {
+    background-color: #45a049;
+}
+
+.go-button:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+}
+
+.reset-button {
+    background-color: #2196F3;
+    color: white;
+}
+
+.reset-button:hover {
+    background-color: #0b7dda;
+}
+
+.ball-info {
+    width: 100%;
+    max-width: 600px;
+    background-color: #f8f8f8;
+    border-radius: 4px;
+    padding: 12px;
+    font-size: 14px;
+}
+
+.ball-info p {
+    margin-bottom: 4px;
+}
+
+.hidden {
+    display: none;
+}
+
+@media (max-width: 600px) {
+    .game-container {
+        padding: 12px;
+    }
+    
+    h1 {
+        font-size: 20px;
+    }
+    
+    .button-group {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    button {
+        width: 100%;
+    }
+}
