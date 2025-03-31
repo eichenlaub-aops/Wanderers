@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Linear Motion Game</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      background: #f0f0f0;
+      font-family: sans-serif;
+    }
+
+    #gameContainer {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-top: 20px;
+    }
+
+    #canvas {
+      background: #fafafa;
+      border: 1px solid #ccc;
+      cursor: crosshair;
+    }
+
+    #controls {
+      margin-top: 10px;
+      display: flex;
+      gap: 10px;
+    }
+
+    #message {
+      margin-top: 10px;
+      color: #333;
+      font-weight: bold;
+    }
+
+    button {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+      font-size: 16px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+<div id="gameContainer">
+  <canvas id="canvas" width="600" height="400"></canvas>
+  <div id="controls">
+    <button id="goButton">Go!</button>
+    <button id="resetButton">Reset</button>
+  </div>
+  <div id="message"></div>
+</div>
+
+<script>
+// ========================================================
+// Game Configuration
+// ========================================================
+
+// Field dimensions in world units
+const FIELD_WIDTH = 30;
+const FIELD_HEIGHT = 20;
+
+// We'll render everything onto a 600x400 canvas,
+// meaning each world unit is scaled by 20 px.
+const SCALE = 20;
+
+// Rocket starting position
+let rocketPos = { x: 0, y: 0 };
+
+// Asteroid starting position
+let asteroidPos = { x: 30, y: 0 };
+
+// Target position (variable, set by default to (18,12))
+const targetPos = { x: 18, y: 12 };
+
+// Asteroid velocity (variable, set by default to (-1,1))
+const asteroidVelDefault = { x: -1, y: 1 };
+
+// Rocket velocity (variable, set by default to (19,12))
+// The user can override this by clicking/dragging in the canvas.
+let rocketVelDefault = { x: 19, y: 12 };
+
+// Current velocities (will be reset on each new attempt)
+let rocketVel = { x: 0, y: 0 };
+let asteroidVel = { x: 0, y: 0 };
+
+// Some additional parameters
+const collisionDistance = 1.0; // Distance threshold for collision
+const dt = 0.02; // Time step for the simulation
+
+// State variables
+let running = false; // Are we currently animating?
+let outcome = null;  // 'miss', 'hit-but-not-target', 'perfect-hit'
+
+// For user arrow input
+let dragging = false;
+let dragStart = null; // Where the user started dragging (rocket pos)
+let dragEnd = null;   // Where the user is currently dragging to
+
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+
+const goButton = document.getElementById('goButton');
+const resetButton = document.getElementById('resetButton');
+const messageDiv = document.getElementById('message');
+
+// ========================================================
+// Initialization and Event Listeners
+// ========================================================
+
+function init() {
+  // Set default velocities
+  rocketVel = { x: rocketVelDefault.x, y: rocketVelDefault.y };
+  asteroidVel = { x: asteroidVelDefault.x, y: asteroidVelDefault.y };
+
+  // Set positions
+  rocketPos = { x: 0, y: 0 };
+  asteroidPos = { x: 30, y: 0 };
+
+  running = false;
+  outcome = null;
+  dragEnd = null;
+  dragging = false;
+  messageDiv.innerText = '';
+
+  drawEverything();
+}
+
+canvas.addEventListener('mousedown', (e) => {
+  if (!running) {
+    dragging = true;
+    dragStart = screenToWorld(e.offsetX, e.offsetY);
+    dragEnd = { x: dragStart.x, y: dragStart.y };
+  }
+});
+
+canvas.addEventListener('mousemove', (e) => {
+  if (dragging) {
+    dragEnd = screenToWorld(e.offsetX, e.offsetY);
+    // We'll define rocketVel based on the vector from rocketPos to dragEnd.
+    let vx = dragEnd.x - rocketPos.x;
+    let vy = dragEnd.y - rocketPos.y;
+    rocketVel = { x: vx, y: vy };
+
+    drawEverything();
+  }
+});
+
+canvas.addEventListener('mouseup', () => {
+  dragging = false;
+});
+
+canvas.addEventListener('mouseleave', () => {
+  // If you leave the canvas while dragging, end the drag.
+  dragging = false;
+});
+
+// On "Go" click
+goButton.addEventListener('click', () => {
+  if (!running) {
+    running = true;
+    messageDiv.innerText = '';
+    requestAnimationFrame(update);
+  }
+});
+
+// On "Reset" click
+resetButton.addEventListener('click', () => {
+  init();
+});
+
+function screenToWorld(px, py) {
+  // Convert from canvas coords (top-left origin) to world coords (bottom-left origin)
+  // Canvas height is 400, so we flip y.
+  const worldX = px / SCALE;
+  const worldY = (canvas.height - py) / SCALE;
+  return { x: worldX, y: worldY };
+}
+
+// ========================================================
+// Game Loop (Animation)
+// ========================================================
+
+function update() {
+  if (!running) {
+    return;
+  }
+
+  // Update positions
+  rocketPos.x += rocketVel.x * dt;
+  rocketPos.y += rocketVel.y * dt;
+
+  asteroidPos.x += asteroidVel.x * dt;
+  asteroidPos.y += asteroidVel.y * dt;
+
+  // Check for collision or out-of-bounds
+  checkConditions();
+
+  // Redraw
+  drawEverything();
+
+  // Continue or stop
+  if (outcome === null) {
+    requestAnimationFrame(update);
+  } else {
+    running = false;
+    showOutcome();
+  }
+}
+
+function checkConditions() {
+  // 1) Check if rocket or asteroid is out of the field
+  if (
+    rocketPos.x < 0 || rocketPos.x > FIELD_WIDTH ||
+    rocketPos.y < 0 || rocketPos.y > FIELD_HEIGHT ||
+    asteroidPos.x < 0 || asteroidPos.x > FIELD_WIDTH ||
+    asteroidPos.y < 0 || asteroidPos.y > FIELD_HEIGHT
+  ) {
+    // Miss if no collision yet
+    outcome = 'miss';
+    return;
+  }
+
+  // 2) Check collision distance
+  let dx = rocketPos.x - asteroidPos.x;
+  let dy = rocketPos.y - asteroidPos.y;
+  let dist = Math.sqrt(dx*dx + dy*dy);
+  if (dist < collisionDistance) {
+    // We have a hit
+    // Check if the asteroid is at the target
+    let tx = asteroidPos.x - targetPos.x;
+    let ty = asteroidPos.y - targetPos.y;
+    let distTarget = Math.sqrt(tx*tx + ty*ty);
+    if (distTarget < 1.0) {
+      // Perfect hit
+      outcome = 'perfect-hit';
+    } else {
+      // Hit but not at target
+      outcome = 'hit-but-not-target';
+    }
+  }
+}
+
+function showOutcome() {
+  if (outcome === 'miss') {
+    messageDiv.innerText = 'Miss! Try again.';
+  } else if (outcome === 'hit-but-not-target') {
+    messageDiv.innerText = 'You hit the asteroid, but not at the target. Try again!';
+  } else if (outcome === 'perfect-hit') {
+    messageDiv.innerText = 'Perfect hit! Congratulations!';
+  }
+}
+
+// ========================================================
+// Rendering
+// ========================================================
+
+function drawEverything() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Draw target
+  drawTarget(targetPos);
+
+  // Draw asteroid and its velocity arrow
+  drawAsteroid(asteroidPos, asteroidVel);
+
+  // Draw rocket and its velocity arrow
+  drawRocket(rocketPos, rocketVel);
+}
+
+function worldToScreen(wx, wy) {
+  // Convert from world coords to screen coords
+  let sx = wx * SCALE;
+  let sy = canvas.height - (wy * SCALE);
+  return { x: sx, y: sy };
+}
+
+function drawAsteroid(pos, vel) {
+  // We'll draw a small gray circle for the asteroid
+  const screenPos = worldToScreen(pos.x, pos.y);
+  ctx.beginPath();
+  ctx.fillStyle = '#666';
+  ctx.arc(screenPos.x, screenPos.y, SCALE * 0.5, 0, 2 * Math.PI);
+  ctx.fill();
+
+  // Draw velocity arrow
+  // We'll scale it visually by about 1 so that the initial length is ~√2
+  const arrowScale = 1;
+
+  // End of the arrow in screen coords
+  const arrowEnd = {
+    x: screenPos.x + vel.x * arrowScale * SCALE,
+    y: screenPos.y - vel.y * arrowScale * SCALE // note the y inversion
+  };
+
+  drawArrow(screenPos, arrowEnd, '#444');
+}
+
+function drawRocket(pos, vel) {
+  // We'll draw a small red circle for the rocket
+  const screenPos = worldToScreen(pos.x, pos.y);
+
+  ctx.beginPath();
+  ctx.fillStyle = '#b11';
+  ctx.arc(screenPos.x, screenPos.y, SCALE * 0.3, 0, 2 * Math.PI);
+  ctx.fill();
+
+  // Draw velocity arrow if not moving or if the game not started
+  if (!running || dragging) {
+    const arrowScale = 1;
+    const arrowEnd = {
+      x: screenPos.x + vel.x * arrowScale * SCALE,
+      y: screenPos.y - vel.y * arrowScale * SCALE
+    };
+    drawArrow(screenPos, arrowEnd, '#b11');
+  }
+}
+
+function drawTarget(pos) {
+  // We'll draw a circle with a black outline for the target
+  const screenPos = worldToScreen(pos.x, pos.y);
+  ctx.beginPath();
+  ctx.strokeStyle = '#000';
+  ctx.lineWidth = 2;
+  ctx.arc(screenPos.x, screenPos.y, SCALE * 0.8, 0, 2 * Math.PI);
+  ctx.stroke();
+}
+
+function drawArrow(start, end, color) {
+  // Draw a line from start to end, then a small triangle at the end.
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(start.x, start.y);
+  ctx.lineTo(end.x, end.y);
+  ctx.stroke();
+
+  // Draw arrowhead
+  let angle = Math.atan2(end.y - start.y, end.x - start.x);
+  const arrowheadLength = 10; // px
+  ctx.beginPath();
+  ctx.moveTo(end.x, end.y);
+  ctx.lineTo(
+    end.x - arrowheadLength * Math.cos(angle - Math.PI / 6),
+    end.y - arrowheadLength * Math.sin(angle - Math.PI / 6)
+  );
+  ctx.lineTo(
+    end.x - arrowheadLength * Math.cos(angle + Math.PI / 6),
+    end.y - arrowheadLength * Math.sin(angle + Math.PI / 6)
+  );
+  ctx.lineTo(end.x, end.y);
+  ctx.fillStyle = color;
+  ctx.fill();
+}
+
+// Kick off
+init();
+</script>
+</body>
+</html>
