@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Linear Motion Game</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background: #f0f0f0;
+      font-family: sans-serif;
+    }
+
+    #mainLayout {
+      display: flex;
+      flex-direction: row;
+      gap: 20px;
+      margin-top: 20px;
+    }
+
+    #canvas {
+      background: #fafafa;
+      border: 1px solid #ccc;
+      cursor: crosshair;
+    }
+
+    #rightPanel {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      justify-content: flex-start;
+      align-items: flex-start;
+    }
+
+    #controls {
+      margin-top: 10px;
+      display: flex;
+      gap: 10px;
+    }
+
+    #message {
+      margin-top: 10px;
+      color: #333;
+      font-weight: bold;
+    }
+
+    button {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    #infoPanel {
+      background: #fff;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+      padding: 10px;
+      width: 200px;
+    }
+
+    .infoRow {
+      margin-bottom: 10px;
+    }
+  </style>
+</head>
+<body>
+
+<div id="mainLayout">
+  <!-- The canvas for our game -->
+  <canvas id="canvas" width="720" height="580"></canvas>
+
+  <!-- Right panel with info -->
+  <div id="rightPanel">
+    <div id="controls">
+      <button id="goButton">Go!</button>
+      <button id="resetButton">Reset</button>
+    </div>
+    <div id="message"></div>
+    
+    <div id="infoPanel">
+      <div class="infoRow">Time: <span id="timeValue">0.00</span> s</div>
+      <div class="infoRow">Asteroid Velocity: <span id="asteroidVelBox">( ?, ? )</span></div>
+      <div class="infoRow">Rocket Velocity: <span id="rocketVelBox">( ?, ? )</span></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ========================================================
+// Game Configuration
+// ========================================================
+
+// Field dimensions in world units
+const FIELD_WIDTH = 30;
+const FIELD_HEIGHT = 20;
+
+// We use 20 px per world unit, plus offset so we can see everything.
+const SCALE = 20;
+
+// We'll offset the entire field in screen space.
+const OFFSET_X = 60; // horizontal margin
+const OFFSET_Y = 60; // vertical margin
+
+// Starting positions
+let rocketPos = { x: 0, y: 0 };
+let asteroidPos = { x: 30, y: 0 };
+
+// Target position
+const targetPos = { x: 18, y: 12 };
+
+// Default velocities
+const asteroidVelDefault = { x: -1, y: 1 };
+// Reduced rocket’s default velocity for demonstration
+let rocketVelDefault = { x: 8, y: 5 };
+
+// Current velocities (reset each new attempt)
+let rocketVel = { x: 0, y: 0 };
+let asteroidVel = { x: 0, y: 0 };
+
+// Some parameters
+const collisionDistance = 1.0; // Distance threshold
+const dt = 0.02; // Time step
+
+// State variables
+let running = false;      // Are we animating?
+let outcome = null;       // 'miss', 'hit-but-not-target', 'perfect-hit'
+let elapsedTime = 0;      // track time in seconds
+
+// For user arrow input
+let dragging = false;
+let dragStart = null; // Where the user started dragging
+let dragEnd = null;   // Where the user is currently dragging to
+
+// DOM elements
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const goButton = document.getElementById('goButton');
+const resetButton = document.getElementById('resetButton');
+const messageDiv = document.getElementById('message');
+
+const timeValueSpan = document.getElementById('timeValue');
+const asteroidVelBox = document.getElementById('asteroidVelBox');
+const rocketVelBox = document.getElementById('rocketVelBox');
+
+// ========================================================
+// Initialization and Event Listeners
+// ========================================================
+
+function init() {
+  // Reset time
+  elapsedTime = 0;
+
+  // Set default velocities
+  rocketVel = { x: rocketVelDefault.x, y: rocketVelDefault.y };
+  asteroidVel = { x: asteroidVelDefault.x, y: asteroidVelDefault.y };
+
+  // Set positions
+  rocketPos = { x: 0, y: 0 };
+  asteroidPos = { x: 30, y: 0 };
+
+  running = false;
+  outcome = null;
+  dragEnd = null;
+  dragging = false;
+
+  messageDiv.innerText = '';
+  timeValueSpan.innerText = '0.00';
+
+  drawEverything();
+}
+
+canvas.addEventListener('mousedown', (e) => {
+  if (!running) {
+    dragging = true;
+    dragStart = screenToWorld(e.offsetX, e.offsetY);
+    dragEnd = { x: dragStart.x, y: dragStart.y };
+  }
+});
+
+canvas.addEventListener('mousemove', (e) => {
+  if (dragging) {
+    dragEnd = screenToWorld(e.offsetX, e.offsetY);
+    // Define rocketVel based on vector from rocketPos to dragEnd
+    let vx = dragEnd.x - rocketPos.x;
+    let vy = dragEnd.y - rocketPos.y;
+    rocketVel = { x: vx, y: vy };
+
+    drawEverything(); // to update rocket velocity display
+  }
+});
+
+canvas.addEventListener('mouseup', () => {
+  dragging = false;
+});
+
+canvas.addEventListener('mouseleave', () => {
+  dragging = false;
+});
+
+// On "Go"
+goButton.addEventListener('click', () => {
+  if (!running) {
+    running = true;
+    messageDiv.innerText = '';
+    requestAnimationFrame(update);
+  }
+});
+
+// On "Reset"
+resetButton.addEventListener('click', () => {
+  init();
+});
+
+function screenToWorld(px, py) {
+  // Convert from canvas coords to world coords, factoring in offsets & inverted y
+  const worldX = (px - OFFSET_X) / SCALE;
+  const worldY = (canvas.height - py - OFFSET_Y) / SCALE;
+  return { x: worldX, y: worldY };
+}
+
+// ========================================================
+// Game Loop
+// ========================================================
+
+function update() {
+  if (!running) {
+    return;
+  }
+  // Increment time
+  elapsedTime += dt;
+
+  // Update positions
+  rocketPos.x += rocketVel.x * dt;
+  rocketPos.y += rocketVel.y * dt;
+
+  asteroidPos.x += asteroidVel.x * dt;
+  asteroidPos.y += asteroidVel.y * dt;
+
+  // Check conditions
+  checkConditions();
+
+  // Redraw
+  drawEverything();
+
+  if (outcome === null) {
+    requestAnimationFrame(update);
+  } else {
+    running = false;
+    showOutcome();
+  }
+}
+
+function checkConditions() {
+  // Out-of-bounds check
+  if (
+    rocketPos.x < 0 || rocketPos.x > FIELD_WIDTH ||
+    rocketPos.y < 0 || rocketPos.y > FIELD_HEIGHT ||
+    asteroidPos.x < 0 || asteroidPos.x > FIELD_WIDTH ||
+    asteroidPos.y < 0 || asteroidPos.y > FIELD_HEIGHT
+  ) {
+    outcome = 'miss';
+    return;
+  }
+
+  // Collision check
+  let dx = rocketPos.x - asteroidPos.x;
+  let dy = rocketPos.y - asteroidPos.y;
+  let dist = Math.sqrt(dx * dx + dy * dy);
+  if (dist < collisionDistance) {
+    // We have a hit
+    let tx = asteroidPos.x - targetPos.x;
+    let ty = asteroidPos.y - targetPos.y;
+    let distTarget = Math.sqrt(tx * tx + ty * ty);
+    if (distTarget < 1.0) {
+      outcome = 'perfect-hit';
+    } else {
+      outcome = 'hit-but-not-target';
+    }
+  }
+}
+
+function showOutcome() {
+  if (outcome === 'miss') {
+    messageDiv.innerText = 'Miss! Try again.';
+  } else if (outcome === 'hit-but-not-target') {
+    messageDiv.innerText = 'You hit the asteroid, but not at the target. Try again!';
+  } else if (outcome === 'perfect-hit') {
+    messageDiv.innerText = 'Perfect hit! Congratulations!';
+  }
+}
+
+// ========================================================
+// Rendering
+// ========================================================
+
+function drawEverything() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Draw the grid first
+  drawGrid();
+
+  // Draw target
+  drawTarget(targetPos);
+
+  // Draw asteroid and velocity
+  drawAsteroid(asteroidPos, asteroidVel);
+
+  // Draw rocket and velocity
+  drawRocket(rocketPos, rocketVel);
+
+  // Update info panel
+  updateInfoPanel();
+}
+
+function worldToScreen(wx, wy) {
+  const sx = OFFSET_X + wx * SCALE;
+  const sy = canvas.height - OFFSET_Y - wy * SCALE;
+  return { x: sx, y: sy };
+}
+
+function drawGrid() {
+  ctx.strokeStyle = '#ddd';
+  ctx.fillStyle = '#999';
+  ctx.font = '12px sans-serif';
+
+  // Vertical lines + x-labels
+  for (let i = 0; i <= FIELD_WIDTH; i++) {
+    const start = worldToScreen(i, 0);
+    const end = worldToScreen(i, FIELD_HEIGHT);
+
+    ctx.beginPath();
+    ctx.moveTo(start.x, start.y);
+    ctx.lineTo(end.x, end.y);
+    ctx.stroke();
+
+    // Label at bottom
+    ctx.fillText(i, start.x + 2, start.y - 2);
+    // Label at top
+    ctx.fillText(i, end.x + 2, end.y - 2);
+  }
+
+  // Horizontal lines + y-labels
+  for (let j = 0; j <= FIELD_HEIGHT; j++) {
+    const start = worldToScreen(0, j);
+    const end = worldToScreen(FIELD_WIDTH, j);
+
+    ctx.beginPath();
+    ctx.moveTo(start.x, start.y);
+    ctx.lineTo(end.x, end.y);
+    ctx.stroke();
+
+    // Label at left
+    ctx.fillText(j, start.x - 12, start.y + 4);
+    // Label at right
+    ctx.fillText(j, end.x - 12, end.y + 4);
+  }
+}
+
+function drawAsteroid(pos, vel) {
+  const screenPos = worldToScreen(pos.x, pos.y);
+  // Asteroid
+  ctx.beginPath();
+  ctx.fillStyle = '#666';
+  ctx.arc(screenPos.x, screenPos.y, SCALE * 0.5, 0, 2 * Math.PI);
+  ctx.fill();
+
+  // Velocity arrow
+  const arrowScale = 1;
+  const arrowEnd = {
+    x: screenPos.x + vel.x * arrowScale * SCALE,
+    y: screenPos.y - vel.y * arrowScale * SCALE
+  };
+  drawArrow(screenPos, arrowEnd, '#444');
+}
+
+function drawRocket(pos, vel) {
+  const screenPos = worldToScreen(pos.x, pos.y);
+
+  // Rocket (circle)
+  ctx.beginPath();
+  ctx.fillStyle = '#b11';
+  ctx.arc(screenPos.x, screenPos.y, SCALE * 0.3, 0, 2 * Math.PI);
+  ctx.fill();
+
+  // Velocity arrow if not running or if dragging
+  if (!running || dragging) {
+    const arrowScale = 1;
+    const arrowEnd = {
+      x: screenPos.x + vel.x * arrowScale * SCALE,
+      y: screenPos.y - vel.y * arrowScale * SCALE
+    };
+    drawArrow(screenPos, arrowEnd, '#b11');
+  }
+}
+
+function drawTarget(pos) {
+  const screenPos = worldToScreen(pos.x, pos.y);
+  ctx.beginPath();
+  ctx.strokeStyle = '#000';
+  ctx.lineWidth = 2;
+  ctx.arc(screenPos.x, screenPos.y, SCALE * 0.8, 0, 2 * Math.PI);
+  ctx.stroke();
+}
+
+function drawArrow(start, end, color) {
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(start.x, start.y);
+  ctx.lineTo(end.x, end.y);
+  ctx.stroke();
+
+  const angle = Math.atan2(end.y - start.y, end.x - start.x);
+  const arrowheadLength = 10;
+
+  ctx.beginPath();
+  ctx.moveTo(end.x, end.y);
+  ctx.lineTo(
+    end.x - arrowheadLength * Math.cos(angle - Math.PI / 6),
+    end.y - arrowheadLength * Math.sin(angle - Math.PI / 6)
+  );
+  ctx.lineTo(
+    end.x - arrowheadLength * Math.cos(angle + Math.PI / 6),
+    end.y - arrowheadLength * Math.sin(angle + Math.PI / 6)
+  );
+  ctx.lineTo(end.x, end.y);
+  ctx.fillStyle = color;
+  ctx.fill();
+}
+
+function updateInfoPanel() {
+  // Update time
+  timeValueSpan.innerText = elapsedTime.toFixed(2);
+
+  // Update velocities
+  asteroidVelBox.innerText = `(${asteroidVel.x.toFixed(2)}, ${asteroidVel.y.toFixed(2)})`;
+  rocketVelBox.innerText = `(${rocketVel.x.toFixed(2)}, ${rocketVel.y.toFixed(2)})`;
+}
+
+// Kick off
+init();
+</script>
+</body>
+</html>
